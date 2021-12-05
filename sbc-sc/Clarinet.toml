@@ -1,0 +1,11 @@
+[project]
+name = "sbc-sc"
+requirements = []
+costs_version = 1
+[contracts.sbc-core]
+path = "contracts/sbc-core.clar"
+depends_on = []
+
+[contracts.sbc-token]
+path = "contracts/sbc-token.clar"
+depends_on = []
