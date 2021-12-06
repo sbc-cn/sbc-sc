@@ -2,6 +2,8 @@
 ;; sbc-token
 ;; Sustainable Bitcoin Certificate Token Definitions and Utilities
 
+(define-constant ERR_UNAUTHORIZED u0)
+(define-constant MINT_FAILED u1)
 ;; constants
 ;; The test address that is authorized to mint sbc tokens.
 ;; It should be replaced by the app address.
@@ -13,7 +15,7 @@
     {block: uint}
     {
         btc-address: (buff 40),
-        bit-amount: uint,
+        btc-amount: uint,
         sbc-amount: uint
     }
 )
@@ -28,7 +30,7 @@
 ;; Update to this definition when deploy on the mainnet
 ;; (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 ;; Use this definition on the testnet
-(impl-trait 'STR8P3RD1EHA8AA37ERSSSZSWKS9T2GYQFGXNA4C.sip-010-trait-ft-standard.sip-101-trait)
+;; (impl-trait 'STR8P3RD1EHA8AA37ERSSSZSWKS9T2GYQFGXNA4C.sip-010-trait-ft-standard.sip-010-trait)
 
 (define-fungible-token sbc)
 ;; SIP-010 FUNCTIONS
@@ -77,7 +79,7 @@
 
 ;; UTILITIES
 
-; URI for SBC token
+;; URI for SBC token
 (define-data-var tokenUri (optional (string-utf8 256)) (some u"https://abc/sbc.json"))
 
 ;; set token URI to new value, only accessible by Auth
@@ -100,13 +102,32 @@
 (define-public (mint-and-record (amount uint) (recipient principal) (btc-block uint) (btc-address (buff 40)))
   (begin
     (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))
-    (ft-mint? sbc amount recipient)
-    (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amout: amount})
-    (let (current-btc (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))
-    (if current-btc)
-        (map-set minted-sbc-by-user {btc-address: btc-address}, totol-minted-sbc: (+ current-btc amount))
-        (map-set minted-sbc-by-user {btc-address: btc-address}, totol-minted-sbc: amount)
+    ;; (ft-mint? sbc amount recipient)
+    ;; (asserts! (is-ok (ft-mint? sbc amount recipient)) (err MINT_FAILED))
+    ;; (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
+    ;; (let (current-btc (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))
+    ;;     (if current-btc
+    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: (+ current-btc amount)})
+    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: amount})
+    ;;     )
+    ;; )
+    (if (is-ok (ft-mint? sbc amount recipient))
+        (begin
+            (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
+            (let ((current-btc (default-to u0 (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))))
+                (map-set minted-sbc-by-user {btc-address: btc-address} {total-minted-sbc: (+ current-btc amount)})                    
+            )
+            (ok true)
+        )
+        (err ERR_UNAUTHORIZED)
     )
+    ;; (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
+    ;; (let (current-btc (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))
+    ;;     (if current-btc
+    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: (+ current-btc amount)})
+    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: amount})
+    ;;     )
+    ;; )   
   )
 )
 
