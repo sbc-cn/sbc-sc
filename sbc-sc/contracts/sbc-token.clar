@@ -1,16 +1,17 @@
-
 ;; sbc-token
 ;; Sustainable Bitcoin Certificate Token Definitions and Utilities
 
-(define-constant ERR_UNAUTHORIZED u0)
-(define-constant MINT_FAILED u1)
 ;; constants
-;; The test address that is authorized to mint sbc tokens.
-;; It should be replaced by the app address.
-(define-constant AUTH_CALLER_ADDRESS 'SP186MENEFRP25YP4VSPNYAW4E3ZC41XDGKRB7YCB)
+;; The address for contract owner who deployed this contract.
+(define-constant contract-owner tx-sender)
+;; Errors
+(define-constant ERR_CONTRACT_OWNER_ONLY u0)
+(define-constant ERR_USER_ALREADY_REGISTERED u1)
+(define-constant ERR_USER_NOT_REGISTERED u2)
+(define-constant ERR_TOKEN_OWNER_ONLY u3)
 
 ;; data maps and vars
-;; a map from a minted Bitcoin block to its owner address and Bitcoin amount.
+;; A map from a minted Bitcoin block to its owner address and Bitcoin amount.
 (define-map minted-block-info
     {block: uint}
     {
@@ -20,29 +21,30 @@
     }
 )
 
-;; a map from a Bitcoin address to the total sbc it has minted.
+;; A map from a Bitcoin address to the total sbc it has minted.
+;; Only registered users are recorded.
 (define-map minted-sbc-by-user
     {btc-address: (buff 40)}
     {total-minted-sbc: uint} 
 )
 
+;; URI for SBC token
+(define-data-var token-uri (optional (string-utf8 256)) (some u"https://abc/sbc.json"))
+
 ;; SIP-010 DEFINITION
+(impl-trait .sip010-ft-trait.sip010-ft-trait)
 ;; Update to this definition when deploy on the mainnet
 ;; (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
-;; Use this definition on the testnet
-;; (impl-trait 'STR8P3RD1EHA8AA37ERSSSZSWKS9T2GYQFGXNA4C.sip-010-trait-ft-standard.sip-010-trait)
 
 (define-fungible-token sbc)
 ;; SIP-010 FUNCTIONS
 ;; Transfer from the caller to a new principal
 (define-public (transfer (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
   (begin
-    (asserts! (is-eq from tx-sender) (err ERR_UNAUTHORIZED))
-    (if (is-some memo)
-      (print memo)
-      none
-    )
-    (ft-transfer? sbc amount from to)
+    (asserts! (is-eq from tx-sender) (err ERR_TOKEN_OWNER_ONLY))
+    (try! (ft-transfer? sbc amount from to))
+    (match memo to-print (print to-print) 0x)
+    (ok true)    
   )
 )
 
@@ -74,66 +76,60 @@
 
 ;; an optional URI that represents metadata of this token
 (define-read-only (get-token-uri)
-  (ok (var-get tokenUri))
+  (ok (var-get token-uri))
 )
 
 ;; UTILITIES
+;; Checks if caller is contract owner
+(define-private (is-caller-contract-owner)
+   (is-eq contract-caller contract-owner)
+)
 
-;; URI for SBC token
-(define-data-var tokenUri (optional (string-utf8 256)) (some u"https://abc/sbc.json"))
+;; Checks if sender is contract owner
+(define-private (is-sender-contract-owner)
+   (is-eq tx-sender contract-owner)
+)
 
-;; set token URI to new value, only accessible by Auth
-(define-public (set-token-uri (newUri (optional (string-utf8 256))))
+;; Sets token URI to new value, only accessible by Auth
+(define-public (set-token-uri (new-uri (optional (string-utf8 256))))
   (begin
-    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))
-    (ok (var-set tokenUri newUri))
+    (asserts! (is-sender-contract-owner) (err ERR_CONTRACT_OWNER_ONLY))
+    (ok (var-set token-uri new-uri))
   )
 )
 
-;; mint new tokens, only accessible by Auth
+;; Mints new tokens, only accessible by contract owner.
 (define-public (mint (amount uint) (recipient principal))
   (begin
-    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))
+    (asserts! (is-caller-contract-owner) (err ERR_CONTRACT_OWNER_ONLY))
     (ft-mint? sbc amount recipient)
   )
 )
 
-;; mint new tokens and record data, only accessible by Auth
-(define-public (mint-and-record (amount uint) (recipient principal) (btc-block uint) (btc-address (buff 40)))
+;; Registers a new BTC address and initialize its total minted sbc.
+(define-public (regist-sbc-user (btc-address (buff 40)))
   (begin
-    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))
-    ;; (ft-mint? sbc amount recipient)
-    ;; (asserts! (is-ok (ft-mint? sbc amount recipient)) (err MINT_FAILED))
-    ;; (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
-    ;; (let (current-btc (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))
-    ;;     (if current-btc
-    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: (+ current-btc amount)})
-    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: amount})
-    ;;     )
-    ;; )
-    (if (is-ok (ft-mint? sbc amount recipient))
-        (begin
-            (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
-            (let ((current-btc (default-to u0 (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))))
-                (map-set minted-sbc-by-user {btc-address: btc-address} {total-minted-sbc: (+ current-btc amount)})                    
-            )
-            (ok true)
-        )
-        (err ERR_UNAUTHORIZED)
-    )
-    ;; (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
-    ;; (let (current-btc (get total-minted-sbc (map-get? minted-sbc-by-user {btc-address: btc-address})))
-    ;;     (if current-btc
-    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: (+ current-btc amount)})
-    ;;         (map-set minted-sbc-by-user {btc-address: btc-address} {totol-minted-sbc: amount})
-    ;;     )
-    ;; )   
+    (asserts! (is-caller-contract-owner) (err ERR_CONTRACT_OWNER_ONLY))
+    (asserts! (is-eq (map-get? minted-sbc-by-user {btc-address: btc-address}) none) (err ERR_USER_ALREADY_REGISTERED))
+    (map-insert minted-sbc-by-user {btc-address: btc-address} {total-minted-sbc: u0})
+    (ok true)
   )
 )
 
-;; checks if caller is Authorized caller
-(define-private (is-authorized-auth)
-   (is-eq contract-caller AUTH_CALLER_ADDRESS)
+;; Mints new tokens and record data, only accessible by contract owner.
+;; The recipient should already be registered.
+(define-public (mint-and-record (amount uint) (recipient principal) (btc-block uint) (btc-address (buff 40)))
+  (begin
+    (asserts! (is-caller-contract-owner) (err ERR_CONTRACT_OWNER_ONLY))
+    (asserts! (not (is-eq (map-get? minted-sbc-by-user {btc-address: btc-address}) none)) (err ERR_USER_NOT_REGISTERED))
+    (try! (ft-mint? sbc amount recipient))
+    (map-set minted-block-info {block: btc-block} {btc-address: btc-address, btc-amount: amount, sbc-amount: amount})
+    (let ((current-btc 
+      (get total-minted-sbc (unwrap! (map-get? minted-sbc-by-user {btc-address: btc-address}) (err ERR_USER_NOT_REGISTERED)))))
+      (map-set minted-sbc-by-user {btc-address: btc-address} {total-minted-sbc: (+ current-btc amount)})                    
+    )
+    (ok true)
+  )
 )
 
 ;; SEND-MANY

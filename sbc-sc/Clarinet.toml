@@ -8,4 +8,8 @@ depends_on = []
 
 [contracts.sbc-token]
 path = "contracts/sbc-token.clar"
+depends_on = ["sip010-ft-trait"]
+
+[contracts.sip010-ft-trait]
+path = "contracts/sip010-ft-trait.clar"
 depends_on = []
