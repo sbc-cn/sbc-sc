@@ -2,6 +2,10 @@
 name = "sbc-sc"
 requirements = []
 costs_version = 1
+[contracts.abc-token]
+path = "contracts/abc-token.clar"
+depends_on = ["sip010-ft-trait"]
+
 [contracts.sbc-core]
 path = "contracts/sbc-core.clar"
 depends_on = []
@@ -13,3 +17,7 @@ depends_on = ["sip010-ft-trait"]
 [contracts.sip010-ft-trait]
 path = "contracts/sip010-ft-trait.clar"
 depends_on = []
+
+[contracts.tsbc-token]
+path = "contracts/tsbc-token.clar"
+depends_on = ["sip010-ft-trait"]
