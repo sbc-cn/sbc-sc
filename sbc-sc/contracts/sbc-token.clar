@@ -29,12 +29,12 @@
 )
 
 ;; URI for SBC token
-(define-data-var token-uri (optional (string-utf8 256)) (some u"https://abc/sbc.json"))
+(define-data-var token-uri (string-utf8 256) u"https://sbp-public.s3.amazonaws.com/json/sbc.json")
 
 ;; SIP-010 DEFINITION
-(impl-trait .sip010-ft-trait.sip010-ft-trait)
+;; (impl-trait .sip010-ft-trait.sip010-ft-trait)
 ;; Update to this definition when deploy on the mainnet
-;; (impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
 
 (define-fungible-token sbc)
 ;; SIP-010 FUNCTIONS
@@ -76,7 +76,7 @@
 
 ;; an optional URI that represents metadata of this token
 (define-read-only (get-token-uri)
-  (ok (var-get token-uri))
+  (ok (some (var-get token-uri)))
 )
 
 ;; UTILITIES
@@ -91,7 +91,7 @@
 )
 
 ;; Sets token URI to new value, only accessible by Auth
-(define-public (set-token-uri (new-uri (optional (string-utf8 256))))
+(define-public (set-token-uri (new-uri (string-utf8 256)))
   (begin
     (asserts! (is-sender-contract-owner) (err ERR_CONTRACT_OWNER_ONLY))
     (ok (var-set token-uri new-uri))
