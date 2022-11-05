@@ -1,5 +1,18 @@
 {
-  "name": "TABC",
-  "description": "ABC token on testnet",
-  "image": "https://sbp-public.s3.amazonaws.com/images/sbc-token-logo.png"
+  "title": "Asset Metadata",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "TABC"
+    },
+    "description": {
+      "type": "string",
+      "description": "ABC Token on Testnet"
+    },
+    "image": {
+      "type": "string",
+      "description": "https://sbp-public.s3.amazonaws.com/images/sbc-token.png"
+    }
+  }
 }

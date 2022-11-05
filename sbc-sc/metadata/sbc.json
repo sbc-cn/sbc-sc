@@ -1,5 +1,5 @@
 {
   "name": "SBC",
-  "description": "SBC token",
-  "image": "https://sbp-public.s3.amazonaws.com/images/sbc-token-logo.png"
+  "description": "Sustainable Bitcoin Certificate",
+  "image": "https://sbp-public.s3.amazonaws.com/images/sbc.svg"
 }
