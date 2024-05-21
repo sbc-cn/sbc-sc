@@ -2,18 +2,19 @@
 pragma solidity ^0.8.0;
 
 contract SBGToken {
-    string public name;
-    string public symbol;
-    uint8 public decimals;
-    uint256 public totalSupply;
+    string public name = "SBG Token";
+    string public symbol = "SBG";
+    uint8 public decimals = 18;
+    uint256 public totalSupply = 210000000 * (10 ** uint256(decimals));
+    uint256 public mintSupply;
     address public owner;
-    // address public _defaultOwner = 0x565EAe1f9d793894083ea26AE1da2edE6a39d12a;
+    uint256 public baseSBGAcount;
 
     mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    // 当前 SBG 质押状态
+    mapping(address => bool) public status;
 
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event Approval(address indexed owner, address indexed spender, uint256 value);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event InfoUpdated(string newInfo);
 
@@ -23,39 +24,35 @@ contract SBGToken {
     }
 
     constructor() {
-        name = "SBG Token";
-        symbol = "SBG";
-        decimals = 18;
-        totalSupply = 210000000 * 10 ** uint256(decimals); // Total supply of 210,000,000 SBG tokens
         owner = msg.sender;
-        // owner = _defaultOwner;
-        balanceOf[msg.sender] = totalSupply;
-        emit Transfer(address(0), msg.sender, totalSupply);
+        balanceOf[owner] = 0;
+        emit Transfer(address(0), owner, 0);
     }
 
     function transfer(address to, uint256 value) external returns (bool success) {
         require(to != address(0), "Invalid recipient");
         require(balanceOf[msg.sender] >= value, "Insufficient balance");
-        balanceOf[msg.sender] -= value;
-        balanceOf[to] += value;
-        emit Transfer(msg.sender, to, value);
-        return true;
-    }
-
-    function approve(address spender, uint256 value) external returns (bool success) {
-        allowance[msg.sender][spender] = value;
-        emit Approval(msg.sender, spender, value);
+        _transfer(msg.sender, to, value);
         return true;
     }
 
     function transferFrom(address from, address to, uint256 value) external returns (bool success) {
         require(to != address(0), "Invalid recipient");
         require(balanceOf[from] >= value, "Insufficient balance");
-        require(allowance[from][msg.sender] >= value, "Allowance exceeded");
-        balanceOf[from] -= value * decimals;
-        balanceOf[to] += value;
-        allowance[from][msg.sender] -= value;
+        _transfer(from, to, value);
+        return true;
+    }
+
+    function _transfer(address from, address to, uint256 value) internal {
+        unchecked {
+            balanceOf[from] -= value;
+            balanceOf[to] += value;
+        }
         emit Transfer(from, to, value);
+    }
+
+    function setBase(uint256 value) external returns (bool success) {
+        baseSBGAcount = value;
         return true;
     }
 
@@ -71,10 +68,11 @@ contract SBGToken {
 
     function mint(address to, uint256 value) external onlyOwner {
         require(to != address(0), "Invalid recipient");
-        require(totalSupply + value >= totalSupply, "Total supply overflow");
-        require(balanceOf[to] + value >= balanceOf[to], "Recipient balance overflow");
-        totalSupply += value;
-        balanceOf[to] += value  * decimals;
+        // require(value > totalSupply, "Mint exceeds limit");
+        unchecked {
+            mintSupply += value;
+            balanceOf[to] += value;
+        }
         emit Transfer(address(0), to, value);
     }
 }
